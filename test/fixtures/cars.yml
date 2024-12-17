@@ -1,0 +1,19 @@
+corolla:
+  id: 1
+  brand_id: 1
+  model: "Corolla"
+  price: 20000
+
+
+civic:
+  id: 2
+  brand_id: 2
+  model: "Civic"
+  price: 22000
+
+
+focus:
+  id: 3
+  brand_id: 3
+  model: "Focus"
+  price: 18000

@@ -67,3 +67,16 @@ yarn-debug.log*
 /storage/*
 !/storage/.keep
 /public/uploads
+### Intellij ###
+target/
+
+# Intellij
+/.idea
+.idea/
+/hot-utils.iml
+*.iml
+*.ipr
+*.iws
+/.ideaDataSources
+dataSources/
+/.idea/

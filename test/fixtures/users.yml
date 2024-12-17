@@ -1,0 +1,3 @@
+john:
+  id: 1
+  preferred_price_range: "[15000, 25000]"
