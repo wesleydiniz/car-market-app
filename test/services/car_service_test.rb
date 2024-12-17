@@ -123,22 +123,18 @@ class CarsServiceTest < ActiveSupport::TestCase
   end
 
   def test_fetch_recommended_cars_and_insert_temp_data
-    # Simulando o retorno de dados de recomendação do serviço RecommendedCarsService
     recommended_data = [
       { "car_id" => 1, "rank_score" => 0.9123 },
       { "car_id" => 2, "rank_score" => 0.8654 },
       { "car_id" => 3, "rank_score" => 0.8333 }
     ]
 
-    # Mocking the RecommendedCarsService call to return the simulated data
     RecommendedCarsService.any_instance.stubs(:call).returns(recommended_data)
 
-    # Espera que RecommendedCar.create! seja chamado 3 vezes, uma para cada item
     RecommendedCar.expects(:create!).with(has_entries(car_id: 1, user_id: @user.id, rank_score: 0.9123))
     RecommendedCar.expects(:create!).with(has_entries(car_id: 2, user_id: @user.id, rank_score: 0.8654))
     RecommendedCar.expects(:create!).with(has_entries(car_id: 3, user_id: @user.id, rank_score: 0.8333))
 
-    # Chamar o método que estamos testando
     CarsService.new(@user,@params).send(:fetch_recommended_cars_and_insert_temp_data)
   end
 end
