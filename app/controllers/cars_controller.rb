@@ -5,7 +5,7 @@ class CarsController < ApplicationController
     @redis = RedisService.new
   end
   def recommended
-    validated_params = car_params
+    validated_params = validate_parameters
 
     redis_key = generate_redis_key(validated_params)
     cache_response = @redis.get(redis_key)
@@ -26,9 +26,8 @@ class CarsController < ApplicationController
     render json: cars
   end
 
-  def car_params
-    params.require(:user_id)
-    params.permit(:user_id, :query, :price_min, :price_max, :page)
+  def validate_parameters
+    params.except(:car).permit(:user_id, :query, :price_min, :price_max, :page)
   end
 
   def generate_redis_key(params)
