@@ -1,0 +1,11 @@
+toyota:
+  id: 1
+  name: Toyota
+
+honda:
+  id: 2
+  name: Honda
+
+ford:
+  id: 3
+  name: Ford

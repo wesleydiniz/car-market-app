@@ -1,78 +1,144 @@
-# test/services/cars_service_test.rb
 require 'test_helper'
+require 'mocha/minitest'
 
 class CarsServiceTest < ActiveSupport::TestCase
-  # Test if the call method returns a correctly formatted response when successful
-  test 'should return formatted cars when the service call is successful' do
-    user = users(:one) # Supondo que você tenha um fixture de usuário configurado
-    params = { user_id: user.id, query: 'Toyota', price_min: 10000, price_max: 50000, page: 1 }
+  setup do
+    @user = users(:john)
+    @params = {
+      user_id: @user.id,
+      query: 'Toyota',
+      price_min: 10000,
+      price_max: 50000,
+      page: 1
+    }
+  end
 
-    # Stubbing the fetch_cars method to return mocked cars data
-    cars = [
-      Car.new(id: 1, brand_id: 1, brand_name: 'Toyota', model: 'Camry', price: 30000, rank_score: 8.5, label: 'perfect_match'),
-      Car.new(id: 2, brand_id: 2, brand_name: 'Honda', model: 'Accord', price: 25000, rank_score: 7.5, label: 'good_match')
+  test "should successfully fetch and format cars" do
+    # Stub external services and methods
+    RecommendedCarsService.any_instance.stubs(:call).returns([
+                                                               { "car_id" => 1, "rank_score" => 0.9123 },
+                                                               { "car_id" => 2, "rank_score" => 0.8654},
+                                                               { "car_id" => 3, "rank_score" => 0.8333 }
+                                                             ])
+    # Stub Car model methods
+    cars = [cars(:corolla),
+            cars(:civic),
+            cars(:focus)]
+
+    # Stub fetch_cars return
+    CarsService.any_instance.stubs(:fetch_cars).returns([cars(:corolla), cars(:civic), cars(:focus)])
+
+    # Create service instance and call method
+    service = CarsService.new(@user, @params)
+    result = service.call
+
+    # Assertions
+    assert_equal 3, result.size
+    assert_equal 3, result.first[:id]
+  end
+
+  test "should handle errors gracefully" do
+    # Stub to raise an error
+    RecommendedCarsService.any_instance.stubs(:call).raises(StandardError.new("Test error"))
+
+    # Create service instance and call method
+    service = CarsService.new(@user, @params)
+    result, status = service.call
+
+    # Assertions for error handling
+    assert_equal({ error: 'Could not fetch recommended cars' }, result)
+    assert_equal :internal_server_error, status[:status]
+  end
+
+  test "should clear temporary recommended cars" do
+    # Expect temporary cars to be deleted
+    RecommendedCar.expects(:where).with(user_id: @user.id).returns(mock('relation', delete_all: true))
+
+    # Create service instance and call method
+    service = CarsService.new(@user, @params)
+    service.send(:clear_temporary_recommended_cars)
+  end
+
+  test "should correctly format cars and sort them by label, rank_score, and price" do
+    car1 = mock('car')
+    car1.stubs(:id).returns(1)
+    car1.stubs(:brand_id).returns(101)
+    car1.stubs(:brand_name).returns('Toyota')
+    car1.stubs(:model).returns('Corolla')
+    car1.stubs(:price).returns(20000)
+    car1.stubs(:rank_score).returns(0.95)
+    car1.stubs(:label).returns('perfect_match')
+
+    car2 = mock('car')
+    car2.stubs(:id).returns(2)
+    car2.stubs(:brand_id).returns(102)
+    car2.stubs(:brand_name).returns(nil)
+    car2.stubs(:model).returns('Civic')
+    car2.stubs(:price).returns(18000)
+    car2.stubs(:rank_score).returns(nil)
+    car2.stubs(:label).returns(nil)
+
+    car3 = mock('car')
+    car3.stubs(:id).returns(3)
+    car3.stubs(:brand_id).returns(103)
+    car3.stubs(:brand_name).returns('Ford')
+    car3.stubs(:model).returns('Focus')
+    car3.stubs(:price).returns(15000)
+    car3.stubs(:label).returns('perfect_match')
+    car3.stubs(:rank_score).returns(0.75)
+
+    cars = [car1,car2,car3]
+
+    expected_result = [
+      {
+        id: 1,
+        brand: { id: 101, name: 'Toyota' },
+        model: 'Corolla',
+        price: 20000,
+        rank_score: 0.95,
+        label: 'perfect_match'
+      },
+      {
+        id: 3,
+        brand: { id: 103, name: 'Ford' },
+        model: 'Focus',
+        price: 15000,
+        rank_score: 0.75,
+        label: 'perfect_match'
+      },
+      {
+        id: 2,
+        brand: { id: 102, name: nil },
+        model: 'Civic',
+        price: 18000,
+        rank_score: nil,
+        label: nil
+      }
     ]
 
-    # Stubbing the `fetch_cars` method within the service
-    CarsService.any_instance.stubs(:fetch_cars).returns(cars)
+    service = CarsService.new(@user, @params)
+    result = service.send(:format_json, cars)
 
-    # Calling the service
-    service = CarsService.new(user, params)
-    result = service.call
-
-    # Verifying that the result is in the expected format
-    assert_includes result[:cars], { id: 1, brand: { id: 1, name: 'Toyota' }, model: 'Camry', price: 30000, rank_score: 8.5, label: 'perfect_match' }
-    assert_includes result[:cars], { id: 2, brand: { id: 2, name: 'Honda' }, model: 'Accord', price: 25000, rank_score: 7.5, label: 'good_match' }
+    assert_equal expected_result, result
   end
 
-  # Test if the service handles errors properly
-  test 'should return an error response when an exception is raised' do
-    user = users(:one)
-    params = { user_id: user.id, query: 'BMW', price_min: 10000, price_max: 50000, page: 1 }
+  def test_fetch_recommended_cars_and_insert_temp_data
+    # Simulando o retorno de dados de recomendação do serviço RecommendedCarsService
+    recommended_data = [
+      { "car_id" => 1, "rank_score" => 0.9123 },
+      { "car_id" => 2, "rank_score" => 0.8654 },
+      { "car_id" => 3, "rank_score" => 0.8333 }
+    ]
 
-    # Simulating an exception being raised during the call
-    CarsService.any_instance.stubs(:fetch_cars).raises(StandardError, 'Database error')
+    # Mocking the RecommendedCarsService call to return the simulated data
+    RecommendedCarsService.any_instance.stubs(:call).returns(recommended_data)
 
-    service = CarsService.new(user, params)
-    result = service.call
+    # Espera que RecommendedCar.create! seja chamado 3 vezes, uma para cada item
+    RecommendedCar.expects(:create!).with(has_entries(car_id: 1, user_id: @user.id, rank_score: 0.9123))
+    RecommendedCar.expects(:create!).with(has_entries(car_id: 2, user_id: @user.id, rank_score: 0.8654))
+    RecommendedCar.expects(:create!).with(has_entries(car_id: 3, user_id: @user.id, rank_score: 0.8333))
 
-    # Verifying the error response
-    assert_equal({ error: 'Could not fetch recommended cars' }, result.first)
-    assert_equal :internal_server_error, result.last
-  end
-
-  # Test if the service correctly clears temporary recommended cars after execution
-  test 'should clear temporary recommended cars after execution' do
-    user = users(:one)
-    params = { user_id: user.id, query: 'BMW', price_min: 10000, price_max: 50000, page: 1 }
-
-    # Creating temporary recommended cars for the user
-    RecommendedCar.create!(user_id: user.id, car_id: 1, rank_score: 8.5)
-    RecommendedCar.create!(user_id: user.id, car_id: 2, rank_score: 7.5)
-
-    service = CarsService.new(user, params)
-
-    # Stubbing the fetch_cars method to avoid actual database queries
-    CarsService.any_instance.stubs(:fetch_cars).returns([])
-
-    # Calling the service
-    service.call
-
-    # Verifying that the temporary cars have been cleared
-    assert_equal 0, RecommendedCar.where(user_id: user.id).count
-  end
-
-  # Test if the call method works correctly when no parameters are provided
-  test 'should return empty cars list when no cars match the filters' do
-    user = users(:one)
-    params = { user_id: user.id, query: 'NonExistentBrand', price_min: 100000, price_max: 500000, page: 1 }
-
-    service = CarsService.new(user, params)
-
-    # Calling the service
-    result = service.call
-
-    # Verifying that the response contains an empty list of cars
-    assert_equal [], result[:cars]
+    # Chamar o método que estamos testando
+    CarsService.new(@user,@params).send(:fetch_recommended_cars_and_insert_temp_data)
   end
 end

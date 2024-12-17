@@ -12,13 +12,18 @@ class CarsController < ApplicationController
     return render json: cache_response if cache_response
 
     user = UsersService.new.find(validated_params[:user_id])
-    return render json: { error: 'User not found' }, status: :not_found unless user
+    if user.nil?
+      return render json: { error: 'User not found' }, status: :not_found
+    end
 
     cars = CarsService.new(user, validated_params).call
 
-    Rails.logger.info("final cars: #{render json: cars}")
+    if cars.nil?
+      return render json: { error: 'Cars not found' }, status: :not_found
+    end
+
     @redis.set(redis_key, cars, 30)
-    render json: { error: 'Cars not found' }, status: :not_found unless cars
+    render json: cars
   end
 
   def car_params

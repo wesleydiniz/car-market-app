@@ -30,6 +30,18 @@ ActiveRecord::Schema.define(version: 2021_06_17_121316) do
     t.index ["brand_id"], name: "index_cars_on_brand_id"
   end
 
+  create_table "recommended_cars", force: :cascade do |t|
+    t.bigint "car_id", null: false
+    t.bigint "user_id", null: false
+    t.decimal "rank_score"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["car_id"], name: "index_card_id_temporary"
+    t.index ["car_id"], name: "index_recommended_cars_on_car_id"
+    t.index ["user_id"], name: "index_recommended_cars_on_user_id"
+    t.index ["user_id"], name: "index_user_id_temporary"
+  end
+
   create_table "user_preferred_brands", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "brand_id", null: false
@@ -46,16 +58,9 @@ ActiveRecord::Schema.define(version: 2021_06_17_121316) do
     t.datetime "updated_at", precision: 6, null: false
   end
 
-  create_table :recommended_cars do |t|
-    t.references :car, null: false, foreign_key: true
-    t.references :user, null: false, foreign_key: true
-    t.decimal :rank_score
-    t.index ["car_id"], name: "index_card_id_temporary"
-    t.index ["user_id"], name: "index_user_id_temporary"
-    t.timestamps
-  end
-
   add_foreign_key "cars", "brands"
+  add_foreign_key "recommended_cars", "cars"
+  add_foreign_key "recommended_cars", "users"
   add_foreign_key "user_preferred_brands", "brands"
   add_foreign_key "user_preferred_brands", "users"
 end

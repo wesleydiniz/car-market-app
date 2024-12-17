@@ -69,19 +69,19 @@ class CarsService
 
       # Applying pagination to limit the number of results
       page = @params[:page].to_i > 0 ? @params[:page].to_i : 1
-      page_size = 100
+      page_size = 20
       offset = (page - 1) * page_size
       ordered_query.limit(page_size).offset(offset)
     end
   end
 
   def fetch_recommended_cars_and_insert_temp_data
-    car_rank_data = car_rank_data = Array(RecommendedCarsService.new(@user.id).call)
+    car_rank_data = Array(RecommendedCarsService.new(@user.id).call)
     car_rank_data.each do |data|
       RecommendedCar.create!(
-        car_id: data["car_id"].to_i, # O car_id vai diretamente no campo correspondente.
-        user_id: @user.id, # Relaciona o usuário com o registro.
-        rank_score: data["rank_score"] # A pontuação.
+        car_id: data["car_id"].to_i,
+        user_id: @user.id,
+        rank_score: data["rank_score"]
       )
     end
   end
@@ -94,27 +94,14 @@ class CarsService
     cars.map do |car|
       {
         id: car.id,
-        brand: { id: car.brand_id, name: car.brand_name },
+        brand: { id: car.brand_id, name: car.respond_to?(:brand_name) ? car.brand_name : nil },
         model: car.model,
         price: car.price,
-        rank_score: car.rank_score,
-        label: car.label
+        rank_score: car.respond_to?(:rank_score) ? car.rank_score : nil,
+        label: car.respond_to?(:label) ? car.label : nil
       }
     end.sort_by do |car|
       [car[:label] == 'perfect_match' ? 0 : car[:label] == 'good_match' ? 1 : 2, -car[:rank_score].to_f, car[:price]]
-    end
-  end
-
-  def format_response(cars)
-    cars.map do |car|
-      {
-        id: car[:id],
-        brand: car[:brand],
-        model: car[:model],
-        price: car[:price],
-        rank_score: car[:rank_score],
-        label: car[:label]
-      }
     end
   end
 

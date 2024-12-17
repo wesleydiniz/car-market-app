@@ -93,10 +93,6 @@ M
 app/services/users_service.rb,2/d/2dc3681244bfa0d65d3eb029feb321c02d3a2053
 M
 app/services/redis_service.rb,3/0/30c7e4904280738b818e5d67723bba1de03218f4
-J
-app/models/dao/cars_dao.rb,5/9/59a630f514333d0508eb65ee383dc19126d2ff83
-X
-(app/models/temporary_recommended_cars.rb,e/d/edd17b7d012e31e7fb7c327f5c50d49d7faf4bd2
 i
 9db/migrate/20210617121316_create_user_preferred_brands.rb,f/6/f6561e108716de7b85012a3513b3e6882f70dca0
 X
@@ -107,22 +103,26 @@ M
 app/models/recommended_car.rb,8/6/8678e77c5f878a36eb496c0d657f605f492a1ed7
 I
 app/models/concerns/.keep,9/9/997df3f37b462ffa12058359823dc89ee37e7ce6
-v
-Fdb/migrate/20241216213543_rename_recommended_car_to_recommended_car.rb,1/f/1f64952219b91265a60a1c2f390e78d71198f385
-Å
-Qdb/migrate/20241216213558_rename_temporary_recommended_cars_to_recommended_car.rb,4/2/42580c90144caeba007d5ec07e9498b5fa4c3c8a
-w
-Gdb/migrate/20241216213630_rename_recommended_car_to_recommended_cars.rb,8/e/8e70c43ae0f59852cd1dab2c0b64b686ed43328d
-N
-app/models/recommended_car_.rb,6/b/6b793b28a919558b2e1af21e30890dba86372d8d
-N
-app/models/recommended_cars.rb,9/7/9772bd82f1544032744d0334801f17bd28ad2a0f
-w
-Gdb/migrate/20241216213942_rename_recommended_cars_to_recommended_car.rb,c/b/cb42c7b1d769a9af21065e06499ba5e95e76a162
-Q
-!spec/services/car_service_spec.rb,b/4/b485dc0d83f32c5186a9a98253c021e091689728
 Q
 !test/services/car_service_test.rb,a/2/a278a7b26801b8039e1e6eca7b42e6d01a3730a8
 :
 
 .gitignore,a/5/a5cc2925ca8258af241be7e5b0381edf30266302
+C
+test/test_helper.rb,3/d/3d48a9258f4bc7e07f0403a61ef719d5b4da5299
+G
+test/fixtures/users.yml,d/4/d4a1df09b77b449a6fe362f209df51a234191a14
+H
+test/fixtures/brands.yml,8/b/8b86552edb43e0c08930f2c4da668f68edd3d349
+F
+test/fixtures/cars.yml,0/e/0e581c9f49fd0b2b47ee1ccc57719315831e7777
+W
+'test/fixtures/user_preferred_brands.yml,e/4/e480caf7169dbc08ba037b44e0eea291122098bb
+R
+"test/fixtures/recommended_cars.yml,f/a/faada12ea11495dab394cb14fcbb5d1ac5772d92
+J
+config/credentials.yml.enc,3/a/3a7740915452a1433cdbe8ebf60ce584948bdd96
+E
+config/application.rb,7/f/7ff7049c1c8745b54f0a9ef78996f60b38f36268
+X
+(test/controllers/cars_controller_test.rb,e/c/ec39f4b0b63548f4a99858b4b7e5275537b97f31

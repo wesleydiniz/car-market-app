@@ -1,334 +1,126 @@
-# Introduction
+# Car Market Solution
 
-We want to build a car market platform and provide a personalized selection of cars to our users. There are few main models:
+# Getting started
 
-* `Brand(name)` - car brands like Mercedes-Benz, Toyota, Volkswagen, BMW.
-* `Car(model_name, brand_id, price)` -  cars for sale.
-* `User(email, preferred_price_range)` - our users who want to buy a car.
-* `UserPreferredBrand(user_id, brand_id)` - relationship to connect the user and his preferred car brands.
+#### Starting Redis server
+    docker compose up
 
-We already prepared rails models and seeds data that you can use but feel free to make any changes here (including model relations, validations, database changes etc).
+#### Installing dependencies
+    bundle install
 
-We also have an external recommendation service with modern AI algorithms. The service provides recommended cars for the user. There is the API endpoint `https://bravado-images-production.s3.amazonaws.com/recomended_cars.json?user_id=<USER_ID>` with the following response schema:
+#### Setup database
+    rake db:setup
+or for tests:
 
-```
-[
-  {
-    car_id: <car id>, # car id from seeds data
-    rank_score: <number between 0..1> # the higher, then the car the more relevant to the user
-  },
-  ...
-]
-```
+    rake db:setup RAILS_ENV=test
 
-The response will contain only the top 10 recommended cars for the user. Like many modern AI algorithms, our service not always work well and sometimes can be unavailable or respond with errors. Also, it's not a real-time solution and has updated data only one time every day.
+#### Executing tests
+    rails test
 
-# Assignment
+#### Starting application
+    rails server
+
+#### Calling the endpoint
+    curl --location --request GET 'http://127.0.0.1:3000/cars/recommended' \
+    --header 'Content-Type: application/json' \
+    --data '{
+    "user_id": 1,
+    "page": 1,
+    "query": "Volks",
+    "price_max": 36000
+    }'
 
 
-You need to build API endpoint that will accept the following parameters:
 
-```
-{
-  "user_id": <user id (required)>
-  "query": <car brand name or part of car brand name to filter by (optional)>
-  "price_min": <minimum price (optional)>
-  "price_max": <maximum price (optional)>
-  "page": <page number for pagination (optional, default 1, default page size is 20)>
-}
-```
+## Overview
 
-The API endpoint should return paginated cars list filtered by params passed with the following rules:
+The solution focuses on solving performance issues by offloading heavy sorting and filtering logic directly to the database, using SQL queries. To achieve this, I decided to temporarily store the AI service's data in a database table (recommended_cars).
 
-1. Each car should have one of the label:
-   * `perfect_match` - cars matched with user preferred car brands ( `user.preferred_brands.include?(car.brand) == true`) and with preferred price (`user.preferred_price_range.include?(car.price) == true`).
-   * `good_match` - cars matched only user preferred car brands (`user.preferred_brands.include?(car.brand) == true`).
-   * `null` - in other cases
-2. Each car should have the `rank_score` field with value from AI service or `null` if there is no data.
-3. Cars should be sorted by:
-   * `label` (`perfect_match`, `good_match`, `null`)
-   * `rank_score` (DESC)
-   * `price` (ASC)
+Additionally, Redis is utilized to cache the results, minimizing database load and improving response times. This approach ensures that the application handles large datasets efficiently without degrading performance.
 
-Schema of response:
-```
-[
-  {
-    "id": <car id>
-    "brand": {
-      id: <car brand id>,
-      name: <car brand name>
-    },
-    "price": <car price>,
-    "rank_score": <rank score>,
-    "model": <car model>,
-    "label": <perfect_match|good_match|nil>
-  },
-  ...
-]
-```
+## Key Features:
+- **Efficient Database Queries**: Sorting, filtering, and ranking are executed in the database to leverage its optimized capabilities.
+- **Caching with Redis**: Cache layers are implemented using Redis to store frequently requested data and reduce database I/O.
+- **Robust Error Handling**: If the cache or external service fails, fallback mechanisms are provided to ensure the system remains functional.
 
-# Example of response
+## Main Components:
 
-Suppose that the user has preferred brands as `Alfa Romeo` and `Volkswagen` and preferred price `35_000...40_000`. The external recommendation service return for this user following data:
-```
-[
-  { "car_id": 179, "rank_score": 0.945 },
-  { "car_id": 5,   "rank_score": 0.4552 },
-  { "car_id": 13,  "rank_score": 0.567 },
-  { "car_id": 97,  "rank_score": 0.9489 },
-  { "car_id": 32,  "rank_score": 0.0967 },
-  { "car_id": 176, "rank_score": 0.0353 },
-  { "car_id": 177, "rank_score": 0.1657 },
-  { "car_id": 36,  "rank_score": 0.7068 },
-  { "car_id": 103, "rank_score": 0.4729 }
-]
-```
-Then based on seeds data if you request the API with the following params:
-```
-{
-  "user_id": 1,
-  "page": 1
-}
-```
-the response from API should be:
-```
-[
-  {
-    "id": 179,
-    "brand": {
-      "id": 39,
-      "name": "Volkswagen"
-    },
-    "model": "Derby",
-    "price": 37230,
-    "rank_score": 0.945,
-    "label": "perfect_match"
-  },
-  {
-    "id": 5,
-    "brand": {
-      "id": 2,
-      "name": "Alfa Romeo"
-    },
-    "model": "Arna",
-    "price": 39938,
-    "rank_score": 0.4552,
-    "label": "perfect_match"
-  },
-  {
-    "id": 180,
-    "brand": {
-      "id": 39,
-      "name": "Volkswagen"
-    },
-    "model": "e-Golf",
-    "price": 35131,
-    "rank_score": null,
-    "label": "perfect_match"
-  },
-  {
-    "id": 181,
-    "brand": {
-      "id": 39,
-      "name": "Volkswagen"
-    },
-    "model": "Amarok",
-    "price": 31743,
-    "rank_score": null,
-    "label": "good_match"
-  },
-  {
-    "id": 186,
-    "brand": {
-      "id": 2,
-      "name": "Alfa Romeo"
-    },
-    "model": "Brera",
-    "price": 40938,
-    "rank_score": null,
-    "label": "good_match"
-  },
-  {
-    "id": 97,
-    "brand": {
-      "id": 20,
-      "name": "Lexus"
-    },
-    "model": "IS 220",
-    "price": 39858,
-    "rank_score": 0.9489,
-    "label": null
-  },
-  {
-    "id": 36,
-    "brand": {
-      "id": 6,
-      "name": "Buick"
-    },
-    "model": "GL 8",
-    "price": 86657,
-    "rank_score": 0.7068,
-    "label": null
-  },
-  {
-    "id": 13,
-    "brand": {
-      "id": 3,
-      "name": "Audi"
-    },
-    "model": "90",
-    "price": 56959,
-    "rank_score": 0.567,
-    "label": null
-  },
-  {
-    "id": 103,
-    "brand": {
-      "id": 22,
-      "name": "Lotus"
-    },
-    "model": "Eclat",
-    "price": 48953,
-    "rank_score": 0.4729,
-    "label": null
-  },
-  {
-    "id": 177,
-    "brand": {
-      "id": 38,
-      "name": "Toyota"
-    },
-    "model": "Allion",
-    "price": 40687,
-    "rank_score": 0.1657,
-    "label": null
-  },
-  {
-    "id": 32,
-    "brand": {
-      "id": 6,
-      "name": "Buick"
-    },
-    "model": "Verano",
-    "price": 21739,
-    "rank_score": 0.0967,
-    "label": null
-  },
-  {
-    "id": 176,
-    "brand": {
-      "id": 37,
-      "name": "Suzuki"
-    },
-    "model": "Kizashi",
-    "price": 40181,
-    "rank_score": 0.0353,
-    "label": null
-  },
-  {
-    "id": 113,
-    "brand": {
-      "id": 24,
-      "name": "Mazda"
-    },
-    "model": "3",
-    "price": 1542,
-    "rank_score": null,
-    "label": null
-  },
-  {
-    "id": 100,
-    "brand": {
-      "id": 20,
-      "name": "Lexus"
-    },
-    "model": "RX 300",
-    "price": 1972,
-    "rank_score": null,
-    "label": null
-  },
-  {
-    "id": 184,
-    "brand": {
-      "id": 40,
-      "name": "Volvo"
-    },
-    "model": "610",
-    "price": 3560,
-    "rank_score": null,
-    "label": null
-  },
-  {
-    "id": 142,
-    "brand": {
-      "id": 31,
-      "name": "Ram"
-    },
-    "model": "Promaster City",
-    "price": 3687,
-    "rank_score": null,
-    "label": null
-  },
-  {
-    "id": 120,
-    "brand": {
-      "id": 26,
-      "name": "Mercury"
-    },
-    "model": "Marauder",
-    "price": 3990,
-    "rank_score": null,
-    "label": null
-  },
-  {
-    "id": 109,
-    "brand": {
-      "id": 23,
-      "name": "Maserati"
-    },
-    "model": "Levante",
-    "price": 4243,
-    "rank_score": null,
-    "label": null
-  },
-  {
-    "id": 89,
-    "brand": {
-      "id": 16,
-      "name": "Infiniti"
-    },
-    "model": "M25",
-    "price": 4372,
-    "rank_score": null,
-    "label": null
-  },
-  {
-    "id": 164,
-    "brand": {
-      "id": 35,
-      "name": "Smart"
-    },
-    "model": "Forfour",
-    "price": 4391,
-    "rank_score": null,
-    "label": null
-  }
-]
-```
+### 1. **CarsController**
+The `CarsController` is responsible for handling HTTP requests related to fetching recommended cars. It performs the following tasks:
+- **Redis Caching**: Checks if the requested data is available in Redis cache before querying the database.
+- **User Validation**: Ensures the user exists before proceeding with fetching car recommendations.
+- **Car Fetching**: Calls the `CarsService` to fetch and return the recommended cars.
+- **Redis Key Generation**: A unique Redis key is generated to store and retrieve cached car data for each specific request.
 
-If you add `"query": "Volks"` parameter to the request then only cars with a brand name that includes `Volks` should be in the response. The same logic for `price_min` and `price_max`.
+#### Methods:
 
-# Criteria for evaluation
+- **`recommended`**:
+   - Validates input parameters and generates a Redis key.
+   - Attempts to fetch the cached response from Redis. If found, returns it.
+   - If the cache is empty, fetches data from the database using the `CarsService`.
+   - Caches the response for future use and returns the final result in JSON format.
 
-* API endpoint should work fast with growing data in DB
-* The code should be decomposed to make changes easily
-* Test coverage to be sure that everything works well
+- **`car_params`**:
+   - Defines the expected input parameters, including `user_id`, `query`, `price_min`, `price_max`, and `page`.
 
-# Notes
+- **`generate_redis_key`**:
+   - Generates a unique Redis key for storing the cached data based on query parameters.
 
-You can use any gems and make any changes in the repo.
+### 2. **RecommendedCarsService**
+This service is responsible for interacting with an external source to fetch recommended cars based on the user ID. It also implements caching to reduce external API calls.
 
-# Attention
+#### Methods:
 
-Please don't open any PRs in this repository. The best way is just to send an archive with your code to us.
+- **`fetch_from_origin`**:
+   - Makes a network request to fetch recommended cars from an external API.
+
+- **`fetch_recommended_cars_with_cache`**:
+   - First checks if cached data is available in Redis.
+   - If no cache is found, fetches data from the origin (external API), then caches the result for both short-term (5 minutes) and long-term (24 hours).
+   - If the external API fails, it falls back to the 24-hour cache.
+
+- **`call`**:
+   - Fetches the recommended cars using the `fetch_recommended_cars_with_cache` method. Returns the cached data or the fetched data if the cache is empty.
+
+### 3. **CarsService**
+This service is the core of this solution. It handles the logic for fetching cars from the database, applying filters, and performing sorting. It also handles the insertion and clearing of temporary car ranking data.
+
+#### Methods:
+
+- **`call`**:
+   - The main method for fetching cars. It calls `fetch_cars`, formats the results, and handles any errors.
+   - If an error occurs, it returns an appropriate error message.
+
+- **`fetch_cars`**:
+   - Fetches the car data using ActiveRecord and SQL joins. It includes:
+      - **Filtering**: Filters cars based on the query, minimum and maximum prices.
+      - **Joining**: Joins the `cars`, `brands`, and `recommended_cars` (a kind of temporary table) tables to fetch all necessary data.
+      - **User Preferences**: Retrieves user preferences (preferred brands and price range) for custom filtering.
+      - **Sorting**: Applies a custom SQL `ORDER BY` clause to sort the cars by preference, rank score, and price.
+      - **Pagination**: Applies pagination to limit the results returned.
+
+- **`fetch_recommended_cars_and_insert_temp_data`**:
+   - Fetches recommended car data from the `RecommendedCarsService` and inserts temporary ranking data into the `recommended_cars` table.
+
+- **`clear_temporary_recommended_cars`**:
+   - Clears the temporary data from the `recommended_cars` table to keep the database clean.
+
+- **`format_json`**:
+   - Formats the car data into a JSON response.
+   - Sorts the cars by preference (`perfect_match`, `good_match`), rank score, and price.
+
+## Performance Considerations:
+1. **Database Efficiency**:
+   - All heavy filtering and sorting logic is pushed to the database using SQL queries, which is optimized for such operations.
+   - By using database joins and grouping, we avoid unnecessary application-level processing, reducing CPU load.
+
+2. **Caching with Redis**:
+   - Redis is used to cache the recommended car data for specific user queries, which avoids repeated database hits and external API calls.
+   - Two cache layers are used:
+      - A **short-term cache** (5 minutes) stores the most recent car recommendations.
+      - A **long-term cache** (24 hours) ensures that even if the short-term cache expires, the system can still return data without making new requests.
+
+3. **Error Handling**:
+   - Fallback mechanisms ensure that if either the cache or external service fails, the system can still return reasonable results using cached data or an empty set.
+
+

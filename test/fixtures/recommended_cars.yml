@@ -1,0 +1,9 @@
+recommended_car1:
+  car: corolla
+  user: john
+  rank_score: 0.9
+
+recommended_car2:
+  car: civic
+  user: jane
+  rank_score: 0.8
