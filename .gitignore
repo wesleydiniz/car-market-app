@@ -72,9 +72,11 @@ target/
 
 # Intellij
 /.idea
+.idea/
 /hot-utils.iml
 *.iml
 *.ipr
 *.iws
 /.ideaDataSources
 dataSources/
+/.idea/
